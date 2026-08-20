@@ -1,0 +1,79 @@
+Step-by-step to make it real
+1. Stripe test mode (10 min)
+
+dashboard.stripe.com -> Create account -> Stay in Test Mode
+Developers -> Webhooks -> Add endpoint: http://localhost:3000/webhook for now, you'll use Stripe CLI to forward
+Select events: payment_intent.succeeded, charge.refunded, payment_intent.payment_failed
+Copy your sk_test_... and whsec_... keys
+
+
+
+2. Webhook endpoint (core of the demo)
+This is the code you show.
+
+If Node.js:
+
+app.post('/webhook', express.raw({type: 'application/json'}), (req, res) => {
+  const event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+  if (event.type === 'payment_intent.succeeded') {
+    // 1. log to DB / Sheets
+    // 2. send receipt email
+  }
+  if (event.type === 'charge.refunded') { /* update sheet row to REFUNDED */ }
+  if (event.type === 'payment_intent.payment_failed') { /* log FAILED + reason */ }
+  res.json({received: true});
+});
+
+If Python (Flask):
+Same logic — stripe.Webhook.construct_event(), then branch on event type.
+
+
+3. Google Sheets logging (makes it visual for non-technical clients)
+
+Create a Sheet with columns: Date | Email | Amount | Status | Stripe ID
+Use Google Sheets API + service account
+When payment_intent.succeeded -> append row
+When refunded -> find row by Stripe ID and update Status to REFUNDED
+If Sheets API is annoying, log to SQLite/Postgres first and say "can sync to Sheets / QuickBooks" — still counts.
+
+
+4. Email receipt (2 lines, huge trust boost)
+Use Resend / SendGrid in test mode. Subject: "Receipt for $29.00" — clients love seeing you thought about their customer.
+
+5. Test it like a client would see
+Install Stripe CLI:
+stripe login
+stripe listen --forward-to localhost:3000/webhook
+stripe trigger payment_intent.succeeded
+stripe trigger charge.refunded
+
+Watch your Sheet fill live — record that.
+
+
+
+
+README that gets you hired
+Write this exact structure:
+
+Stripe -> Sheets Automation Demo
+Problem: Manual entry of Stripe payments into Sheets/QuickBooks
+What I built: Webhook that listens for Stripe payments, logs to Google Sheets, sends receipt email, handles refunds/fails
+Stack: Node.js + Express + Stripe API + Google Sheets API
+Demo: [Loom link 2 min]
+How to test: stripe trigger...
+Next step: Can adapt to push to QuickBooks Online as Invoice / Sales Receipt instead of Sheets
+
+Then record a 2-min Loom: 30 sec show Sheet empty, trigger a payment, 30 sec show Sheet fills + email arrives, 30 sec show code, 30 sec say "I can adapt this to your QuickBooks flow."
+
+Now you can ethically say on Upwork:
+Built Stripe webhook automation (test mode): payment success -> Google Sheets + email receipt, handles refund/failed events. Code + demo:. Stack: Node.js/Express. Looking for first client projects to adapt this to QuickBooks/Shopify.[GitHub]
+
+That's not "no experience" — that's "shipped demo, ready for client data."
+
+Want to tell me Node or Python so I can drop the full starter code for your webhook + Sheets client? I can write the files so you just paste your test keys.
+
+
+
+
+
+
